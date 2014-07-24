@@ -39,6 +39,9 @@ class ThresholdEffectOptions(Effect.EffectOptions):
   def create(self):
     super(ThresholdEffectOptions,self).create()
 
+    import SelectDirection
+    self.SelectionDirection = SelectDirection.SelectDirection(self.frame)
+
     self.thresholdLabel = qt.QLabel("Threshold Range:", self.frame)
     self.thresholdLabel.setToolTip("Set the range of the background values that should be labeled.")
     self.frame.layout().addWidget(self.thresholdLabel)
@@ -89,7 +92,12 @@ class ThresholdEffectOptions(Effect.EffectOptions):
       tool = self.tools[0]
       tool.min = min
       tool.max = max
-      tool.apply()
+      if self.SelectionDirection.AxiCBox.checked:
+        tool.apply('Red')
+      if self.SelectionDirection.SagCBox.checked:
+        tool.apply('Yellow')
+      if self.SelectionDirection.CorCBox.checked:
+        tool.apply('Green')
     except IndexError:
       # no tools available
       pass
@@ -175,10 +183,18 @@ class ThresholdEffectOptions(Effect.EffectOptions):
     opacity = 0.5 + self.previewState / (2. * self.previewSteps)
     min = float(self.parameterNode.GetParameter("ThresholdEffect,min"))
     max = float(self.parameterNode.GetParameter("ThresholdEffect,max"))
-    for tool in self.tools:
-      tool.min = min
-      tool.max = max
-      tool.preview(self.editUtil.getLabelColor()[:3] + (opacity,))
+    if self.SelectionDirection.frame.isHidden():
+      for tool in self.tools:
+        tool.min = min
+        tool.max = max
+        tool.preview(self.editUtil.getLabelColor()[:3] + (opacity,))
+    else:
+      checked = [self.SelectionDirection.AxiCBox.checked, self.SelectionDirection.SagCBox.checked, self.SelectionDirection.CorCBox.checked]
+      for i in range(3):
+        tool = self.tools[i]
+        tool.min = min
+        tool.max = max
+        tool.preview(self.editUtil.getLabelColor()[:3] + (opacity,), checked[i])
     self.previewState += self.previewStep
     if self.previewState >= self.previewSteps:
       self.previewStep = -1
@@ -250,13 +266,15 @@ class ThresholdEffectTool(Effect.EffectTool):
     # view - but for now everything is driven by the options gui
     pass
 
-  def apply(self):
-
-    if not self.editUtil.getBackgroundImage() or not self.editUtil.getLabelImage():
+  def apply(self, LayoutName):
+    """applying the threshold to the label image"""
+    self.sliceLogic = self.editUtil.getSliceLogic(LayoutName)
+    BackgroundImage = self.editUtil.getBackgroundImage(LayoutName)
+    if not BackgroundImage or not self.editUtil.getLabelImage(LayoutName):
       return
     node = self.editUtil.getParameterNode()
 
-    self.undoRedo.saveState()
+    self.undoRedo.saveState(LayoutName)
 
     thresh = vtk.vtkImageThreshold()
     if vtk.VTK_MAJOR_VERSION <= 5:
@@ -266,16 +284,21 @@ class ThresholdEffectTool(Effect.EffectTool):
     thresh.ThresholdBetween(self.min, self.max)
     thresh.SetInValue( self.editUtil.getLabel() )
     thresh.SetOutValue( 0 )
-    thresh.SetOutputScalarType( self.editUtil.getLabelImage().GetScalarType() )
+    thresh.SetOutputScalarType( self.editUtil.getLabelImage(LayoutName).GetScalarType() )
     # $this setProgressFilter $thresh "Threshold"
     thresh.Update()
 
-    self.editUtil.getLabelImage().DeepCopy( thresh.GetOutput() )
-    self.editUtil.markVolumeNodeAsModified(self.editUtil.getLabelVolume())
+    self.editUtil.getLabelImage(LayoutName).DeepCopy( thresh.GetOutput() )
+    self.editUtil.markVolumeNodeAsModified(self.editUtil.getLabelVolume(LayoutName))
 
-  def preview(self,color=None):
-
+  def preview(self, color=None, checked = True):
+    """previewsing the result of thresholding"""
     if not self.editUtil.getBackgroundImage() or not self.editUtil.getLabelImage():
+      return
+
+    if not checked:
+      self.cursorActor.VisibilityOff()
+      self.sliceView.scheduleRender()
       return
 
     #

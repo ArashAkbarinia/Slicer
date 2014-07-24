@@ -489,9 +489,12 @@ class PaintEffectTool(LabelEffect.LabelEffectTool):
       self.renderer.AddActor2D( a )
 
   def paintApply(self):
+    sliceLogic = self.sliceWidget.sliceLogic()
+
     if self.paintCoordinates != []:
       if self.undoRedo:
-        self.undoRedo.saveState()
+        layoutName = sliceLogic.GetSliceCompositeNode().GetLayoutName()
+        self.undoRedo.saveState(layoutName)
 
     for xy in self.paintCoordinates:
       if self.pixelMode:
@@ -505,7 +508,6 @@ class PaintEffectTool(LabelEffect.LabelEffectTool):
     # - editing image data of the calling modified on the node
     #   does not pull the pipeline chain
     # - so we trick it by changing the image data first
-    sliceLogic = self.sliceWidget.sliceLogic()
     labelLogic = sliceLogic.GetLabelLayer()
     labelNode = labelLogic.GetVolumeNode()
     self.editUtil.markVolumeNodeAsModified(labelNode)

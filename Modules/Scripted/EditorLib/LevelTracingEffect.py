@@ -146,7 +146,8 @@ class LevelTracingEffectTool(LabelEffect.LabelEffectTool):
       if self.actionState == '':
         xy = self.interactor.GetEventPosition()
         self.preview(xy)
-        self.abortEvent(event)
+        # commented the following line to let slicer crosshair works
+        #self.abortEvent(event)
     if event == "RightButtonPressEvent" or event == "MiddleButtonPressEvent":
       self.actionState = 'interacting'
     if event == "RightButtonReleaseEvent" or event == "MiddleButtonReleaseEvent":
@@ -160,7 +161,7 @@ class LevelTracingEffectTool(LabelEffect.LabelEffectTool):
     """calculate the current level trace view if the
     mouse is inside the volume extent"""
     self.xyPoints.Reset()
-    backgroundImage = self.editUtil.getBackgroundImage()
+    backgroundImage = self.logic.sliceLogic.GetBackgroundLayer().GetVolumeNode().GetImageData()
     ijk = self.logic.backgroundXYToIJK( xy )
     dimensions = backgroundImage.GetDimensions()
     for index in xrange(3):
@@ -169,9 +170,9 @@ class LevelTracingEffectTool(LabelEffect.LabelEffectTool):
       if ijk[index] < 1 or ijk[index] >= dimensions[index]-1:
         return
     if vtk.VTK_MAJOR_VERSION <= 5:
-      self.tracingFilter.SetInput( self.editUtil.getBackgroundImage() )
+      self.tracingFilter.SetInput( backgroundImage )
     else:
-      self.tracingFilter.SetInputData( self.editUtil.getBackgroundImage() )
+      self.tracingFilter.SetInputData( backgroundImage )
     self.tracingFilter.SetSeed( ijk )
 
     # select the plane corresponding to current slice orientation

@@ -42,7 +42,7 @@ class RemoveIslandsEffectOptions(IslandEffect.IslandEffectOptions):
     super(RemoveIslandsEffectOptions,self).__del__()
 
   def create(self):
-    super(RemoveIslandsEffectOptions,self).create()
+    super(RemoveIslandsEffectOptions,self).create(True)
 
     self.applyConnectivity = qt.QPushButton("Apply Connectivity Method", self.frame)
     self.applyConnectivity.setToolTip("Remove islands that are not connected at all to the surface.  Islands with thin connections will not be removed.")
@@ -64,11 +64,21 @@ class RemoveIslandsEffectOptions(IslandEffect.IslandEffectOptions):
 
   def onApplyConnectivity(self):
     self.logic.undoRedo = self.undoRedo
-    self.logic.removeIslandsConnectivity()
+    if self.SelectionDirection.AxiCBox.checked:
+      self.logic.removeIslandsConnectivity('Red')
+    if self.SelectionDirection.SagCBox.checked:
+      self.logic.removeIslandsConnectivity('Yellow')
+    if self.SelectionDirection.CorCBox.checked:
+      self.logic.removeIslandsConnectivity('Green')
 
   def onApplyMorphology(self):
     self.logic.undoRedo = self.undoRedo
-    self.logic.removeIslandsMorphology()
+    if self.SelectionDirection.AxiCBox.checked:
+      self.logic.removeIslandsMorphology('Red')
+    if self.SelectionDirection.SagCBox.checked:
+      self.logic.removeIslandsMorphology('Yellow')
+    if self.SelectionDirection.CorCBox.checked:
+      self.logic.removeIslandsMorphology('Green')
 
   def destroy(self):
     super(RemoveIslandsEffectOptions,self).destroy()
@@ -155,12 +165,11 @@ class RemoveIslandsEffectLogic(IslandEffect.IslandEffectLogic):
           return p
     return 1
 
-  def removeIslandsConnectivity(self):
+  def removeIslandsConnectivity(self, LayoutName):
     #
     # change the label values based on the parameter node
     #
-    if not self.sliceLogic:
-      self.sliceLogic = self.editUtil.getSliceLogic()
+    self.sliceLogic = self.editUtil.getSliceLogic(LayoutName)
     parameterNode = self.editUtil.getParameterNode()
     minimumSize = int(parameterNode.GetParameter("IslandEffect,minimumSize"))
     fullyConnected = bool(parameterNode.GetParameter("IslandEffect,fullyConnected"))
@@ -250,7 +259,7 @@ class RemoveIslandsEffectLogic(IslandEffect.IslandEffectLogic):
         islands.SetImageDataConnection(cast2.GetOutputPort())
         thresh2.SetImageDataConnection(postThresh.GetOutputPort())
 
-  def removeIslandsMorphology(self):
+  def removeIslandsMorphology(self, LayoutName):
     """
     Remove cruft from image by eroding away by iterations number of layers of surface
     pixels and then saving only islands that are bigger than the minimumSize.
@@ -261,8 +270,7 @@ class RemoveIslandsEffectLogic(IslandEffect.IslandEffectLogic):
     By calling the decrufter twice with fg and bg reversed, you can clean up small features in
     a label map while preserving the original boundary in other places.
     """
-    if not self.sliceLogic:
-      self.sliceLogic = self.editUtil.getSliceLogic()
+    self.sliceLogic = self.editUtil.getSliceLogic(LayoutName)
     parameterNode = self.editUtil.getParameterNode()
     self.minimumSize = int(parameterNode.GetParameter("IslandEffect,minimumSize"))
     self.fullyConnected = bool(parameterNode.GetParameter("IslandEffect,fullyConnected"))

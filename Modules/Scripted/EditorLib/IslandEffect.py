@@ -37,8 +37,13 @@ class IslandEffectOptions(Effect.EffectOptions):
   def __del__(self):
     super(IslandEffectOptions,self).__del__()
 
-  def create(self):
+  def create(self, MultipleDirection = False):
     super(IslandEffectOptions,self).create()
+
+    if MultipleDirection:
+      import SelectDirection
+      self.SelectionDirection = SelectDirection.SelectDirection(self.frame)
+
     self.fullyConnected = qt.QCheckBox("Fully Connected", self.frame)
     self.fullyConnected.setToolTip("When set, only pixels that share faces (not corners or edges) are considered connected.")
     self.frame.layout().addWidget(self.fullyConnected)

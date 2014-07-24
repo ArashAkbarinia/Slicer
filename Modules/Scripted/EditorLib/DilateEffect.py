@@ -54,13 +54,26 @@ class DilateEffectOptions(MorphologyEffect.MorphologyEffectOptions):
   def destroy(self):
     super(DilateEffectOptions,self).destroy()
 
-  def onApply(self):
-    logic = DilateEffectLogic(self.editUtil.getSliceLogic())
+  def doErode(self, LayoutName):
+    if self.SelectionDirection.AxiCBox.checked:
+      logic = DilateEffectLogic(self.editUtil.getSliceLogic(LayoutName))
+    if self.SelectionDirection.SagCBox.checked:
+      logic = DilateEffectLogic(self.editUtil.getSliceLogic(LayoutName))
+    if self.SelectionDirection.CorCBox.checked:
+      logic = DilateEffectLogic(self.editUtil.getSliceLogic(LayoutName))
     logic.undoRedo = self.undoRedo
     fill = int(self.parameterNode.GetParameter('MorphologyEffect,fill'))
     neighborMode = self.parameterNode.GetParameter('MorphologyEffect,neighborMode')
     iterations = int(self.parameterNode.GetParameter('MorphologyEffect,iterations'))
-    logic.erode(fill,neighborMode,iterations)
+    logic.erode(fill, neighborMode, iterations)
+
+  def onApply(self):
+    if self.SelectionDirection.AxiCBox.checked:
+      self.doErode('Red')
+    if self.SelectionDirection.SagCBox.checked:
+      self.doErode('Yellow')
+    if self.SelectionDirection.CorCBox.checked:
+      self.doErode('Green')
 
   # note: this method needs to be implemented exactly as-is
   # in each leaf subclass so that "self" in the observer
@@ -128,7 +141,7 @@ class DilateEffectLogic(MorphologyEffect.MorphologyEffectLogic):
   def __init__(self,sliceLogic):
     super(DilateEffectLogic,self).__init__(sliceLogic)
 
-  def erode(self,fill,neighborMode,iterations):
+  def erode(self, fill, neighborMode, iterations):
 
     eroder = slicer.vtkImageErode()
     if vtk.VTK_MAJOR_VERSION <= 5:

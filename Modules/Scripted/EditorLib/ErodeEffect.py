@@ -54,13 +54,21 @@ class ErodeEffectOptions(MorphologyEffect.MorphologyEffectOptions):
   def destroy(self):
     super(ErodeEffectOptions,self).destroy()
 
-  def onApply(self):
-    logic = ErodeEffectLogic(self.editUtil.getSliceLogic())
+  def doErode(self, LayoutName):
+    logic = ErodeEffectLogic(self.editUtil.getSliceLogic(LayoutName))
     logic.undoRedo = self.undoRedo
     fill = int(self.parameterNode.GetParameter('MorphologyEffect,fill'))
     neighborMode = self.parameterNode.GetParameter('MorphologyEffect,neighborMode')
     iterations = int(self.parameterNode.GetParameter('MorphologyEffect,iterations'))
     logic.erode(fill,neighborMode,iterations)
+
+  def onApply(self):
+    if self.SelectionDirection.AxiCBox.checked:
+      self.doErode('Red')
+    if self.SelectionDirection.SagCBox.checked:
+      self.doErode('Yellow')
+    if self.SelectionDirection.CorCBox.checked:
+      self.doErode('Green')
 
   # note: this method needs to be implemented exactly as-is
   # in each leaf subclass so that "self" in the observer

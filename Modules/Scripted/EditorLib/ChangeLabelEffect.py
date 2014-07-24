@@ -42,6 +42,10 @@ class ChangeLabelEffectOptions(Effect.EffectOptions):
   def create(self):
     super(ChangeLabelEffectOptions,self).create()
     self.logic.undoRedo = self.undoRedo
+
+    import SelectDirection
+    self.SelectionDirection = SelectDirection.SelectDirection(self.frame)
+
     import EditColor
     self.inputColor = EditColor.EditColor(self.frame,'ChangeLabelEffect,inputColor')
     self.inputColor.label.setText("Input Color:")
@@ -84,7 +88,12 @@ class ChangeLabelEffectOptions(Effect.EffectOptions):
     self.updateMRMLFromGUI()
 
   def onApply(self):
-    self.logic.changeLabel()
+    if self.SelectionDirection.AxiCBox.checked:
+      self.logic.changeLabel('Red')
+    if self.SelectionDirection.SagCBox.checked:
+      self.logic.changeLabel('Yellow')
+    if self.SelectionDirection.CorCBox.checked:
+      self.logic.changeLabel('Green')
 
   def setMRMLDefaults(self):
     super(ChangeLabelEffectOptions,self).setMRMLDefaults()
@@ -161,12 +170,11 @@ class ChangeLabelEffectLogic(Effect.EffectLogic):
   def __init__(self,sliceLogic):
     super(ChangeLabelEffectLogic,self).__init__(sliceLogic)
 
-  def changeLabel(self):
+  def changeLabel(self, LayoutName):
     #
     # change the label values based on the parameter node
     #
-    if not self.sliceLogic:
-      self.sliceLogic = self.editUtil.getSliceLogic()
+    self.sliceLogic = self.editUtil.getSliceLogic(LayoutName)
     parameterNode = self.editUtil.getParameterNode()
     parameterNode = self.editUtil.getParameterNode()
     inputColor = int(parameterNode.GetParameter("ChangeLabelEffect,inputColor"))

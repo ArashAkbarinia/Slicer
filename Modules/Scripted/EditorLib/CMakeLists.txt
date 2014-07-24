@@ -39,6 +39,7 @@ set(MODULE_PYTHON_SCRIPTS
   EditUtil
   Effect
   HelperBox
+  SelectDirection
   ${EDITOR_BUILTIN_EFFECTS}
   )
 

@@ -23,7 +23,7 @@ comment = """
 
 class EditBox(object):
 
-  def __init__(self, parent=None, optionsFrame=None):
+  def __init__(self, parent=None, optionsFrame=None, IsThreeVolume = False):
     self.effects = []
     self.effectButtons = {}
     self.effectCursors = {}
@@ -33,6 +33,7 @@ class EditBox(object):
     self.undoRedo = EditUtil.UndoRedo()
     self.undoRedo.stateChangedCallback = self.updateUndoRedoButtons
     self.toggleShortcut = None
+    self.IsThreeVolume = IsThreeVolume
 
     # check for extensions - if none have been registered, just create the empty dictionary
     try:
@@ -293,10 +294,11 @@ class EditBox(object):
     #
     # If there is no background volume or label map, do nothing
     #
-    if not self.editUtil.getBackgroundVolume():
-      return
-    if not self.editUtil.getLabelVolume():
-      return
+    if not effectName == 'DefaultTool':
+      if not self.editUtil.getBackgroundVolume('Red') and not self.editUtil.getBackgroundVolume('Yellow') and not self.editUtil.getBackgroundVolume('Green'):
+        return
+      if not self.editUtil.getLabelVolume('Red') and not self.editUtil.getLabelVolume('Yellow') and not self.editUtil.getLabelVolume('Green'):
+        return
 
     #
     # an effect was selected, so build an options GUI
@@ -360,6 +362,15 @@ class EditBox(object):
     hasMouseAttribute = False
     if hasattr(self.currentOption,'attributes'):
       hasMouseAttribute = 'MouseTool' in self.currentOption.attributes
+
+    if hasattr(self.currentOption, 'SelectionDirection'):
+      if self.IsThreeVolume:
+        self.currentOption.SelectionDirection.frame.show()
+      else:
+        self.currentOption.SelectionDirection.frame.hide()
+        self.currentOption.SelectionDirection.AxiCBox.setChecked(True)
+        self.currentOption.SelectionDirection.SagCBox.setChecked(False)
+        self.currentOption.SelectionDirection.CorCBox.setChecked(False)
 
     if toolName in self.mouseTools or hasMouseAttribute:
       # set the interaction mode in case there was an active place going on
@@ -436,3 +447,12 @@ class EditBox(object):
       self.cancelFloatingMode()
     else:
       self.enterFloatingMode()
+
+  def threeVolumesCBoxChanged(self, IsThreeVolume):
+    self.IsThreeVolume = IsThreeVolume
+    if self.currentOption == None:
+      return
+    if IsThreeVolume:
+      self.currentOption.SelectionDirection.frame.show()
+    else:
+      self.currentOption.SelectionDirection.frame.hide()

@@ -41,6 +41,9 @@ class GrowCutEffectOptions(Effect.EffectOptions):
   def create(self):
     super(GrowCutEffectOptions,self).create()
 
+    import SelectDirection
+    self.SelectionDirection = SelectDirection.SelectDirection(self.frame)
+
     self.helpLabel = qt.QLabel("Run the GrowCut segmentation on the current label map.\nThis will use your current segmentation as an example\nto fill in the rest of the volume.", self.frame)
     self.frame.layout().addWidget(self.helpLabel)
 
@@ -80,7 +83,12 @@ class GrowCutEffectOptions(Effect.EffectOptions):
   def onApply(self):
     slicer.util.showStatusMessage("Running GrowCut...", 2000)
     self.logic.undoRedo = self.undoRedo
-    self.logic.growCut()
+    if self.SelectionDirection.AxiCBox.checked:
+      self.logic.growCut('Red')
+    if self.SelectionDirection.SagCBox.checked:
+      self.logic.growCut('Yellow')
+    if self.SelectionDirection.CorCBox.checked:
+      self.logic.growCut('Green')
     slicer.util.showStatusMessage("GrowCut Finished", 2000)
 
   def updateMRMLFromGUI(self):
@@ -124,7 +132,9 @@ class GrowCutEffectLogic(Effect.EffectLogic):
   def __init__(self,sliceLogic):
     super(GrowCutEffectLogic,self).__init__(sliceLogic)
 
-  def growCut(self):
+  def growCut(self, LayoutName):
+    self.sliceLogic = self.editUtil.getSliceLogic(LayoutName)
+
     growCutFilter = vtkITK.vtkITKGrowCutSegmentationImageFilter()
     background = self.getScopedBackground()
     gestureInput = self.getScopedLabelInput()

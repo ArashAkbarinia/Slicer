@@ -42,7 +42,7 @@ class IdentifyIslandsEffectOptions(IslandEffect.IslandEffectOptions):
     super(IdentifyIslandsEffectOptions,self).__del__()
 
   def create(self):
-    super(IdentifyIslandsEffectOptions,self).create()
+    super(IdentifyIslandsEffectOptions,self).create(True)
 
     self.apply = qt.QPushButton("Apply", self.frame)
     self.apply.objectName = self.__class__.__name__ + 'Apply'
@@ -59,7 +59,12 @@ class IdentifyIslandsEffectOptions(IslandEffect.IslandEffectOptions):
 
   def onApply(self):
     self.logic.undoRedo = self.undoRedo
-    self.logic.removeIslands()
+    if self.SelectionDirection.AxiCBox.checked:
+      self.logic.removeIslands('Red')
+    if self.SelectionDirection.SagCBox.checked:
+      self.logic.removeIslands('Yellow')
+    if self.SelectionDirection.CorCBox.checked:
+      self.logic.removeIslands('Green')
 
   def destroy(self):
     super(IdentifyIslandsEffectOptions,self).destroy()
@@ -128,12 +133,11 @@ class IdentifyIslandsEffectLogic(IslandEffect.IslandEffectLogic):
   def __init__(self,sliceLogic):
     super(IdentifyIslandsEffectLogic,self).__init__(sliceLogic)
 
-  def removeIslands(self):
+  def removeIslands(self, LayoutName):
     #
     # change the label values based on the parameter node
     #
-    if not self.sliceLogic:
-      self.sliceLogic = self.editUtil.getSliceLogic()
+    self.sliceLogic = self.editUtil.getSliceLogic(LayoutName)
     parameterNode = self.editUtil.getParameterNode()
     minimumSize = int(parameterNode.GetParameter("IslandEffect,minimumSize"))
     fullyConnected = bool(parameterNode.GetParameter("IslandEffect,fullyConnected"))

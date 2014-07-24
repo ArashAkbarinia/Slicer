@@ -70,6 +70,13 @@ class EditorWidget:
       self.parent = parent
       self.layout = parent.layout()
 
+    self.EndCloseEventTag = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.HandleCloseEvent)
+
+  def HandleCloseEvent(self, caller, event):
+    """handles the close event by setting the tool box to the default effect"""
+    if self.toolsBox:
+      self.toolsBox.defaultEffect()
+
   def turnOffLightboxes(self):
     """Since the editor effects can't be used in lightbox mode,
     be sure to turn these off and warn the user about it"""
@@ -128,30 +135,6 @@ class EditorWidget:
     self.turnOffLightboxes()
     self.installShortcutKeys()
 
-    # get the master and merge nodes from the composite node associated
-    # with the red slice, but only if showing volumes and we don't already
-    # have an active set of volumes that we are using
-    if self.showVolumesFrame:
-      if not self.helper.master or not self.helper.merge:
-        # get the slice composite node for the Red slice view (we'll assume it exists
-        # since we are in the editor) to get the current background and label
-        # - set the foreground layer as the active ID
-        # in the selection node for later calls to PropagateVolumeSelection
-        compositeNode = self.editUtil.getCompositeNode()
-        selectionNode = slicer.app.applicationLogic().GetSelectionNode()
-        selectionNode.SetReferenceSecondaryVolumeID( compositeNode.GetForegroundVolumeID() )
-        bgID = lbID = ""
-        if compositeNode.GetBackgroundVolumeID():
-          bgID = compositeNode.GetBackgroundVolumeID()
-        if compositeNode.GetLabelVolumeID():
-          lbID = compositeNode.GetLabelVolumeID()
-        masterNode = slicer.mrmlScene.GetNodeByID( bgID )
-        mergeNode = slicer.mrmlScene.GetNodeByID( lbID )
-        self.setMasterNode(masterNode)
-        self.setMergeNode(mergeNode)
-    # if not showing volumes, the caller is responsible for setting the master and
-    # merge nodes, most likely according to a widget within the caller
-
     # Observe the parameter node in order to make changes to
     # button states as needed
     self.parameterNode = self.editUtil.getParameterNode()
@@ -164,6 +147,7 @@ class EditorWidget:
       self.toolsColor.updateGUIFromMRML(self.parameterNode, vtk.vtkCommand.ModifiedEvent)
 
   def exit(self):
+    slicer.mrmlScene.RemoveObserver(self.EndCloseEventTag)
     self.parameterNode.RemoveObserver(self.parameterNodeTag)
     if self.helper:
       self.helper.onExit()
@@ -182,11 +166,9 @@ class EditorWidget:
       if self.helper:
         self.helper.setMasterVolume(newMasterNode)
 
-  # sets the node for the label map
-  def setMergeNode(self, newMergeNode):
-    if newMergeNode:
-      if self.helper:
-        self.helper.setMergeVolume(newMergeNode)
+  def threeVolumesCBoxChanged(self, state):
+    """event handler for the check box 3 volumes"""
+    self.toolsBox.threeVolumesCBoxChanged(self.helper.threeVolumesCBox.checked)
 
   # sets up the widget
   def setup(self):
@@ -211,7 +193,8 @@ class EditorWidget:
     # create the helper box - note this isn't a Qt widget
     #  but a helper class that creates Qt widgets in the given parent
     if self.showVolumesFrame:
-      self.helper = EditorLib.HelperBox(self.volumes)
+      self.helper = EditorLib.HelperBox(self.volumes, IsThreeVolume = False)
+      self.helper.threeVolumesCBox.connect("stateChanged(int)", self.threeVolumesCBoxChanged)
     else:
       self.helper = None
 
@@ -277,7 +260,7 @@ class EditorWidget:
     self.editBoxFrame.objectName = 'EditBoxFrame'
     self.editBoxFrame.setLayout(qt.QVBoxLayout())
     self.effectsToolsFrame.layout().addWidget(self.editBoxFrame)
-    self.toolsBox = EditorLib.EditBox(self.editBoxFrame, optionsFrame=self.effectOptionsFrame)
+    self.toolsBox = EditorLib.EditBox(self.editBoxFrame, optionsFrame=self.effectOptionsFrame, IsThreeVolume = False)
 
   def updateLabelFrame(self, mergeVolume):
     self.editLabelMapsFrame.collapsed = not mergeVolume

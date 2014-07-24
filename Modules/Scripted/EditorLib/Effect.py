@@ -397,7 +397,8 @@ class EffectLogic(object):
     layerLogic = self.sliceLogic.GetLabelLayer()
     volumeNode = layerLogic.GetVolumeNode()
     if self.undoRedo:
-      self.undoRedo.saveState()
+      layoutName = self.sliceLogic.GetSliceCompositeNode().GetLayoutName()
+      self.undoRedo.saveState(layoutName)
     targetImage = volumeNode.GetImageData()
     if self.scope == "All":
       targetImage.DeepCopy( self.scopedImageBuffer )

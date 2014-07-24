@@ -316,7 +316,7 @@ class LabelEffectLogic(Effect.EffectLogic):
         print ("Cannot handle non-linear transforms - skipping")
     return ijkToRAS
 
-  def applyPolyMask(self,polyData):
+  def applyPolyMask(self, polyData):
     """
     rasterize a polyData (closed list of points)
     into the label map layer
@@ -333,21 +333,22 @@ class LabelEffectLogic(Effect.EffectLogic):
     polyData.GetPoints().Modified()
     bounds = polyData.GetBounds()
 
-    self.applyImageMask(maskIJKToRAS, mask, bounds)
+    self.applyImageMask(maskIJKToRAS, mask, bounds, self.sliceLogic.GetName())
 
-  def applyImageMask(self, maskIJKToRAS, mask, bounds):
+  def applyImageMask(self, maskIJKToRAS, mask, bounds, layoutName):
     """
     apply a pre-rasterized image to the current label layer
     - maskIJKToRAS tells the mapping from image pixels to RAS
     - mask is a vtkImageData
     - bounds are the xy extents of the mask (zlo and zhi ignored)
     """
-    backgroundLogic = self.sliceLogic.GetBackgroundLayer()
+    sliceLogic = self.editUtil.getSliceLogic(layoutName)
+    backgroundLogic = sliceLogic.GetBackgroundLayer()
     backgroundNode = backgroundLogic.GetVolumeNode()
     if not backgroundNode: return
     backgroundImage = backgroundNode.GetImageData()
     if not backgroundImage: return
-    labelLogic = self.sliceLogic.GetLabelLayer()
+    labelLogic = sliceLogic.GetLabelLayer()
     labelNode = labelLogic.GetVolumeNode()
     if not labelNode: return
     labelImage = labelNode.GetImageData()
@@ -362,7 +363,7 @@ class LabelEffectLogic(Effect.EffectLogic):
     # store a backup copy of the label map for undo
     # (this happens in it's own thread, so it is cheap)
     if self.undoRedo:
-      self.undoRedo.saveState()
+      self.undoRedo.saveState(layoutName)
 
     #
     # get the mask bounding box in ijk coordinates

@@ -41,6 +41,10 @@ class MorphologyEffectOptions(Effect.EffectOptions):
 
   def create(self):
     super(MorphologyEffectOptions,self).create()
+
+    import SelectDirection
+    self.SelectionDirection = SelectDirection.SelectDirection(self.frame)
+
     # TODO: provide an entry for label to replace with (defaults to zero)
     self.eightNeighbors = qt.QRadioButton("Eight Neighbors", self.frame)
     self.eightNeighbors.setToolTip("Treat diagonally adjacent voxels as neighbors.")

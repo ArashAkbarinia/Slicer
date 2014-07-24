@@ -30,3 +30,4 @@ from GrowCutEffect import *
 from WatershedFromMarkerEffect import *
 from FastMarchingEffect import *
 from WandEffect import *
+from SelectDirection import *

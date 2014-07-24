@@ -43,6 +43,9 @@ class MakeModelEffectOptions(Effect.EffectOptions):
   def create(self):
     super(MakeModelEffectOptions,self).create()
 
+    import SelectDirection
+    self.SelectionDirection = SelectDirection.SelectDirection(self.frame)
+
     self.goToModelMaker = qt.QPushButton("Go To Model Maker", self.frame)
     self.goToModelMaker.setToolTip( "The Model Maker interface contains a whole range of options for building sets of models and controlling the parameters." )
     self.frame.layout().addWidget(self.goToModelMaker)
@@ -124,7 +127,12 @@ class MakeModelEffectOptions(Effect.EffectOptions):
       # - model will show up when the processing is finished
       #
       slicer.util.showStatusMessage( "Model Making Started...", 2000 )
-      self.logic.makeModel(self.modelName.text,self.smooth.checked)
+      if self.SelectionDirection.AxiCBox.checked:
+        self.logic.makeModel('Red', self.modelName.text, self.smooth.checked)
+      if self.SelectionDirection.SagCBox.checked:
+        self.logic.makeModel('Yellow', self.modelName.text, self.smooth.checked)
+      if self.SelectionDirection.CorCBox.checked:
+        self.logic.makeModel('Green', self.modelName.text, self.smooth.checked)
 
   def setMRMLDefaults(self):
     super(MakeModelEffectOptions,self).setMRMLDefaults()
@@ -187,13 +195,13 @@ class MakeModelEffectLogic(Effect.EffectLogic):
   def __init__(self,sliceLogic):
     super(MakeModelEffectLogic,self).__init__(sliceLogic)
 
-  def makeModel(self,modelName='EditorModel',smooth=True):
+  def makeModel(self, LayoutName, modelName = 'EditorModel', smooth = True):
     #
     # create a model using the command line module
     # based on the current editor parameters
     #
 
-    volumeNode = self.editUtil.getLabelVolume()
+    volumeNode = self.editUtil.getLabelVolume(LayoutName)
     if not volumeNode:
       return
 

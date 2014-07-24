@@ -41,6 +41,9 @@ class WatershedFromMarkerEffectOptions(Effect.EffectOptions):
   def create(self):
     super(WatershedFromMarkerEffectOptions,self).create()
 
+    import SelectDirection
+    self.SelectionDirection = SelectDirection.SelectDirection(self.frame)
+
     if not HAVE_SIMPLEITK:
       self.warningLabel = qt.QLabel()
       self.warningLabel.text = "WatershedFromMarker is not available because\nSimpleITK is not available in this build"
@@ -156,13 +159,20 @@ The "Object Scale" parameter is use to adjust the smoothness of the output image
     super(WatershedFromMarkerEffectOptions,self).updateGUIFromMRML(caller,event)
     self.updatingGUI = False
 
-  def onApply(self):
-    logic = WatershedFromMarkerEffectLogic( self.editUtil.getSliceLogic() )
+  def doWatershed(self, LayoutName):
+    logic = WatershedFromMarkerEffectLogic( self.editUtil.getSliceLogic(LayoutName) )
     logic.undoRedo = self.undoRedo
 
     logic.sigma = float( self.sigmaSpinBox.value )
-
     logic.doit()
+
+  def onApply(self):
+    if self.SelectionDirection.AxiCBox.checked:
+      self.doWatershed('Red')
+    if self.SelectionDirection.SagCBox.checked:
+      self.doWatershed('Yellow')
+    if self.SelectionDirection.CorCBox.checked:
+      self.doWatershed('Green')
 
   def onSigmaValueChanged(self, sigma):
 
@@ -248,7 +258,8 @@ class WatershedFromMarkerEffectLogic(LabelEffect.LabelEffectLogic):
     # store a backup copy of the label map for undo
     # (this happens in it's own thread, so it is cheap)
     if self.undoRedo:
-      self.undoRedo.saveState()
+      layoutName = self.sliceLogic.GetSliceCompositeNode().GetLayoutName()
+      self.undoRedo.saveState(layoutName)
 
     featureImage = sitk.GradientMagnitudeRecursiveGaussian( backgroundImage, float(self.sigma) );
     del backgroundImage

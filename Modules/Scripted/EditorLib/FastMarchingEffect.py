@@ -38,6 +38,12 @@ class FastMarchingEffectOptions(Effect.EffectOptions):
   def create(self):
     super(FastMarchingEffectOptions,self).create()
 
+    import SelectDirection
+    self.SelectionDirection = SelectDirection.SelectDirection(self.frame)
+    self.SelectionDirection.AxiCBox.connect("stateChanged(int)", self.UpdatePercentText)
+    self.SelectionDirection.SagCBox.connect("stateChanged(int)", self.UpdatePercentText)
+    self.SelectionDirection.CorCBox.connect("stateChanged(int)", self.UpdatePercentText)
+
     self.defaultMaxPercent = 30
 
     self.percentLabel = qt.QLabel('Expected structure volume as % of image volume:',self.frame)
@@ -107,11 +113,12 @@ class FastMarchingEffectOptions(Effect.EffectOptions):
     # march = float(self.parameterNode.GetParameter
     self.connectWidgets()
 
-  def onMarch(self):
+  def doMarch(self, LayoutName):
     try:
+      self.sliceLogic = self.editUtil.getSliceLogic(LayoutName)
       slicer.util.showStatusMessage('Running FastMarching...', 2000)
       self.logic.undoRedo = self.undoRedo
-      npoints = self.logic.fastMarching(self.percentMax.value)
+      npoints = self.logic.fastMarching(self.percentMax.value, LayoutName)
       slicer.util.showStatusMessage('FastMarching finished', 2000)
       if npoints:
         self.marcher.minimum = 0
@@ -123,12 +130,26 @@ class FastMarchingEffectOptions(Effect.EffectOptions):
       print('No tools available!')
       pass
 
-  def onMarcherChanged(self,value):
-    self.logic.updateLabel(value/self.marcher.maximum)
+  def onMarch(self):
+    if self.SelectionDirection.AxiCBox.checked:
+      self.doMarch('Red')
+    if self.SelectionDirection.SagCBox.checked:
+      self.doMarch('Yellow')
+    if self.SelectionDirection.CorCBox.checked:
+      self.doMarch('Green')
 
-  def percentMaxChanged(self, val):
+  def onMarcherChanged(self, value):
+    if self.SelectionDirection.AxiCBox.checked:
+      self.logic.updateLabel(value / self.marcher.maximum, 'Red')
+    if self.SelectionDirection.SagCBox.checked:
+      self.logic.updateLabel(value / self.marcher.maximum, 'Yellow')
+    if self.SelectionDirection.CorCBox.checked:
+      self.logic.updateLabel(value / self.marcher.maximum, 'Green')
+
+  def calculatePercent(self, Value, LayoutName):
+    self.sliceLogic = self.editUtil.getSliceLogic(LayoutName)
     labelNode = self.logic.getLabelNode()
-    labelImage = self.editUtil.getLabelImage()
+    labelImage = self.editUtil.getLabelImage(LayoutName)
     spacing = labelNode.GetSpacing()
     if vtk.VTK_MAJOR_VERSION <= 5:
       dim = labelImage.GetDimensions()
@@ -137,9 +158,25 @@ class FastMarchingEffectOptions(Effect.EffectOptions):
       dim = labelImage.GetDimensions()
       print dim
       totalVolume = spacing[0]*dim[0]+spacing[1]*dim[1]+spacing[2]*dim[2]
+    percentVolumeStr = "%.5f" % (totalVolume * Value / 100.)
+    return percentVolumeStr
 
-      percentVolumeStr = "%.5f" % (totalVolume*val/100.)
-    self.percentVolume.text = '(maximum total volume: '+percentVolumeStr+' mL)'
+  def UpdatePercentText(self, state):
+    self.percentMaxChanged(self.percentMax.value)
+
+  def percentMaxChanged(self, val):
+    PercentVolumeText = '(maximum total volume: '
+    if self.SelectionDirection.AxiCBox.checked:
+      pcent = self.calculatePercent(val, 'Red')
+      PercentVolumeText = PercentVolumeText + '[axi ' + pcent + '] '
+    if self.SelectionDirection.SagCBox.checked:
+      pcent = self.calculatePercent(val, 'Yellow')
+      PercentVolumeText = PercentVolumeText + '[sag ' + pcent + '] '
+    if self.SelectionDirection.CorCBox.checked:
+      pcent = self.calculatePercent(val, 'Green')
+      PercentVolumeText = PercentVolumeText + '[cor ' + pcent + '] '
+    PercentVolumeText = PercentVolumeText + 'mL)'
+    self.percentVolume.text = PercentVolumeText
 
   def updateMRMLFromGUI(self):
     if self.updatingGUI:
@@ -198,22 +235,19 @@ class FastMarchingEffectLogic(Effect.EffectLogic):
 
   def __init__(self,sliceLogic):
     super(FastMarchingEffectLogic,self).__init__(sliceLogic)
+    self.fm = {}
 
-  def fastMarching(self,percentMax):
+  def fastMarching(self, percentMax, LayoutName):
 
-    self.fm = None
+    self.fm.update({LayoutName : None})
     # allocate a new filter each time March is hit
-    bgImage = self.editUtil.getBackgroundImage()
-    labelImage = self.editUtil.getLabelImage()
+    bgImage = self.editUtil.getBackgroundImage(LayoutName)
+    labelImage = self.editUtil.getLabelImage(LayoutName)
 
     # collect seeds
-    if vtk.VTK_MAJOR_VERSION <= 5:
-      dim = bgImage.GetWholeExtent()
-    else:
-      dim = bgImage.GetDimensions()
-      print dim
+    dim = bgImage.GetWholeExtent()
     # initialize the filter
-    self.fm = slicer.vtkPichonFastMarching()
+    tmpfm = slicer.vtkPichonFastMarching()
     scalarRange = bgImage.GetScalarRange()
     depth = scalarRange[1]-scalarRange[0]
 
@@ -242,19 +276,19 @@ class FastMarchingEffectLogic(Effect.EffectLogic):
 
     print('Input scalar range: '+str(depth))
     if vtk.VTK_MAJOR_VERSION <= 5:
-      self.fm.init(dim[1]+1, dim[3]+1, dim[5]+1, depth, 1, 1, 1)
+      tmpfm.init(dim[1]+1, dim[3]+1, dim[5]+1, depth, 1, 1, 1)
     else:
-      self.fm.init(dim[0], dim[1], dim[2], depth, 1, 1, 1)
+      tmpfm.init(dim[0], dim[1], dim[2], depth, 1, 1, 1)
 
     caster = vtk.vtkImageCast()
     caster.SetOutputScalarTypeToShort()
     if vtk.VTK_MAJOR_VERSION <= 5:
       caster.SetInput(bgImage)
       caster.Update()
-      self.fm.SetInput(caster.GetOutput())
+      tmpfm.SetInput(caster.GetOutput())
     else:
       caster.SetInputData(bgImage)
-      self.fm.SetInputConnection(caster.GetOutputPort())
+      tmpfm.SetInputConnection(caster.GetOutputPort())
 
     # self.fm.SetOutput(labelImage)
 
@@ -263,44 +297,50 @@ class FastMarchingEffectLogic(Effect.EffectLogic):
     else:
       npoints = int(dim[0]*dim[1]*dim[2]*percentMax/100.)
 
-    self.fm.setNPointsEvolution(npoints)
+    tmpfm.setNPointsEvolution(npoints)
     print('Setting active label to '+str(self.editUtil.getLabel()))
-    self.fm.setActiveLabel(self.editUtil.getLabel())
+    tmpfm.setActiveLabel(self.editUtil.getLabel())
 
-    nSeeds = self.fm.addSeedsFromImage(labelImage)
+    nSeeds = tmpfm.addSeedsFromImage(labelImage)
+    self.fm.update({LayoutName : tmpfm})
     if nSeeds == 0:
       return 0
 
-    self.fm.Modified()
-    self.fm.Update()
+    tmpfm.Modified()
+    tmpfm.Update()
 
     # TODO: need to call show() twice for data to be updated
-    self.fm.show(1)
-    self.fm.Modified()
-    self.fm.Update()
+    tmpfm.show(1)
+    tmpfm.Modified()
+    tmpfm.Update()
 
-    self.fm.show(1)
-    self.fm.Modified()
-    self.fm.Update()
+    tmpfm.show(1)
+    tmpfm.Modified()
+    tmpfm.Update()
 
-    self.undoRedo.saveState()
+    self.fm.update({LayoutName : tmpfm})
 
-    self.editUtil.getLabelImage().DeepCopy(self.fm.GetOutput())
+    self.undoRedo.saveState(LayoutName)
+
+    self.editUtil.getLabelImage(LayoutName).DeepCopy(tmpfm.GetOutput())
     self.editUtil.markVolumeNodeAsModified(self.sliceLogic.GetLabelLayer().GetVolumeNode())
     # print('FastMarching output image: '+str(output))
     print('FastMarching march update completed')
 
     return npoints
 
-  def updateLabel(self,value):
-    if not self.fm:
+  def updateLabel(self, value, LayoutName):
+    self.sliceLogic = self.editUtil.getSliceLogic(LayoutName)
+    tmpfm = self.fm.get(LayoutName)
+    if not tmpfm:
       return
-    self.fm.show(value)
-    self.fm.Modified()
-    self.fm.Update()
+    tmpfm.show(value)
+    tmpfm.Modified()
+    tmpfm.Update()
+    self.fm.update({LayoutName : tmpfm})
 
-    self.editUtil.getLabelImage().DeepCopy(self.fm.GetOutput())
-    self.editUtil.getLabelImage().Modified()
+    self.editUtil.getLabelImage(LayoutName).DeepCopy(tmpfm.GetOutput())
+    self.editUtil.getLabelImage(LayoutName).Modified()
 
     self.editUtil.markVolumeNodeAsModified(self.sliceLogic.GetLabelLayer().GetVolumeNode())
 
