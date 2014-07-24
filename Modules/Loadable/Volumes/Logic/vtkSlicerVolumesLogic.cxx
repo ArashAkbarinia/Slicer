@@ -926,7 +926,7 @@ vtkSlicerVolumesLogic::CheckForLabelVolumeValidity(vtkMRMLScalarVolumeNode *volu
             {
             volumeValue = volumeIJKToRAS->GetElement(row,column);
             labelValue = labelIJKToRAS->GetElement(row,column);
-            if (volumeValue != labelValue)
+            if (abs(volumeValue - labelValue) > 0.00001)
               {
               warnings << "IJKToRAS mismatch at [" << row << ", " << column << "] (" << volumeValue << " != " << labelValue << ")\n";
               }
