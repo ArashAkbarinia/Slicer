@@ -16,6 +16,7 @@ set(${KIT}_SRCS
   vtkImageStash.cxx
   vtkPichonFastMarching.cxx
   vtkPichonFastMarchingPDF.cxx
+  vtkPowerCrustSurfaceReconstruction.cxx
   )
 
 if(${VTK_VERSION_MAJOR} GREATER 5)

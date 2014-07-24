@@ -112,6 +112,7 @@ set(vtkITK_SRCS
   vtkITKImageToImageFilterSS.h
   vtkITKGradientAnisotropicDiffusionImageFilter.cxx
   vtkITKDistanceTransform.cxx
+  vtkITKExternalContourFilter.cxx
   vtkITKLevelTracingImageFilter.cxx
   vtkITKLevelTracing3DImageFilter.cxx
   vtkITKWandImageFilter.cxx
