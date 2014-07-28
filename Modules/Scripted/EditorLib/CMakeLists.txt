@@ -40,6 +40,7 @@ set(MODULE_PYTHON_SCRIPTS
   Effect
   HelperBox
   SelectDirection
+  UpdateModelLive
   ${EDITOR_BUILTIN_EFFECTS}
   )
 
