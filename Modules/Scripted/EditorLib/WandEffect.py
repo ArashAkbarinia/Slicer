@@ -300,6 +300,12 @@ class WandEffectLogic(LabelEffect.LabelEffectLogic):
       backgroundDrawArray = backgroundArray
       labelDrawArray = labelArray
 
+    # check if IJK is inside the image
+    dims = labelImage.GetDimensions()
+    for e, d in zip(ijk, dims): # clamp to volume extent
+      if e < 0 or e >= d:
+        return
+
     #
     # do a recursive search for pixels to change
     #
