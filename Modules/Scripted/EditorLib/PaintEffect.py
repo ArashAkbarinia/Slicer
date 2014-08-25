@@ -310,6 +310,7 @@ class PaintEffectTool(LabelEffect.LabelEffectTool):
       self.mapper.SetInputData(self.brush)
     self.actor.SetMapper(self.mapper)
     self.actor.VisibilityOff()
+    self.lineSource = vtk.vtkLineSource()
 
     self.renderer.AddActor2D(self.actor)
     self.actors.append(self.actor)
@@ -459,7 +460,19 @@ class PaintEffectTool(LabelEffect.LabelEffectTool):
     given point or queue it up with a marker for later
     painting
     """
-    self.paintCoordinates.append( (x, y) )
+    if self.paintCoordinates == []:
+      self.paintCoordinates.append((x, y))
+    else:
+      lastx = self.paintCoordinates[-1][0]
+      lasty = self.paintCoordinates[-1][1]
+      self.lineSource.SetPoint1(lastx, lasty, 0)
+      self.lineSource.SetPoint2(x, y, 0)
+      self.lineSource.SetResolution(max(abs(lastx - x), abs(lasty - y)))
+      self.lineSource.Update()
+      points = self.lineSource.GetOutput().GetPoints()
+      for i in range(points.GetNumberOfPoints()):
+        p = points.GetPoint(i)
+        self.paintCoordinates.append((p[0], p[1]))
     if self.delayedPaint and not self.pixelMode:
       self.paintFeedback()
     else:
